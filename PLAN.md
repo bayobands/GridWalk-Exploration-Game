@@ -20,12 +20,12 @@ Key gameplay challenge: collect nearby tokens and craft a high-value token.
 
 #### Steps
 
-- [ ] Read and understand starter code (Leaflet + luck hashing).
-- [ ] Copy `src/main.ts` to `src/reference-main.ts` for reference.
-- [ ] Delete contents of `src/main.ts` and start fresh.
-- [ ] Initialize Leaflet map centered on classroom coordinates.
-- [ ] Draw one grid cell polygon on the map.
-- [ ] Generalize to draw a full grid of cells around the player.
+- [x] Read and understand starter code (Leaflet + luck hashing).
+- [x] Copy `src/main.ts` to `src/reference-main.ts` for reference.
+- [x] Delete contents of `src/main.ts` and start fresh.
+- [x] Initialize Leaflet map centered on classroom coordinates.
+- [x] Draw one grid cell polygon on the map.
+- [x] Generalize to draw a full grid of cells around the player.
 - [ ] Implement deterministic token spawning using `luck` for each cell.
 - [ ] Visualize cell contents (empty vs token + numeric value).
 - [ ] Track player inventory (0 or 1 token) in game state.
