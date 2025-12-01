@@ -1,115 +1,119 @@
+// Fix Leaflet CSS, icons, paths BEFORE Leaflet loads
+// Leaflet styles (required for correct tile layout) and page styles
+import "leaflet/dist/leaflet.css";
+import "./style.css";
+
+import "./_leafletWorkaround.ts";
+
+// Leaflet runtime + types
 // @deno-types="npm:@types/leaflet"
-import leaflet from "leaflet";
+import L from "leaflet";
 
-// Style sheets
-import "leaflet/dist/leaflet.css"; // supporting style for Leaflet
-import "./style.css"; // student-controlled page style
-
-// Fix missing marker images
-import "./_leafletWorkaround.ts"; // fixes for missing Leaflet images
-
-// Import our luck function
+// Deterministic hashing
 import luck from "./_luck.ts";
 
-// Create basic UI elements
-
-const controlPanelDiv = document.createElement("div");
-controlPanelDiv.id = "controlPanel";
-document.body.append(controlPanelDiv);
-
+// Create <div id="map"> without editing index.html
 const mapDiv = document.createElement("div");
 mapDiv.id = "map";
-document.body.append(mapDiv);
+document.body.appendChild(mapDiv);
 
-const statusPanelDiv = document.createElement("div");
-statusPanelDiv.id = "statusPanel";
-document.body.append(statusPanelDiv);
+/* -------------------------------------------------------------
+   1. MAP SETUP
+--------------------------------------------------------------*/
 
-// Our classroom location
-const CLASSROOM_LATLNG = leaflet.latLng(
-  36.997936938057016,
-  -122.05703507501151,
-);
+// Replace coordinates with the real classroom if needed
+const CLASS_LAT = 36.9916;
+const CLASS_LNG = -122.0583;
 
-// Tunable gameplay parameters
-const GAMEPLAY_ZOOM_LEVEL = 19;
-const TILE_DEGREES = 1e-4;
-const NEIGHBORHOOD_SIZE = 8;
-const CACHE_SPAWN_PROBABILITY = 0.1;
+const map = L.map("map", {
+  zoomControl: true,
+  zoomSnap: 0,
+}).setView([CLASS_LAT, CLASS_LNG], 18);
 
-// Create the map (element with id "map" is defined in index.html)
-const map = leaflet.map(mapDiv, {
-  center: CLASSROOM_LATLNG,
-  zoom: GAMEPLAY_ZOOM_LEVEL,
-  minZoom: GAMEPLAY_ZOOM_LEVEL,
-  maxZoom: GAMEPLAY_ZOOM_LEVEL,
-  zoomControl: false,
-  scrollWheelZoom: false,
-});
+// OSM tiles
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+}).addTo(map);
 
-// Populate the map with a background tile layer
-leaflet
-  .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution:
-      '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  })
-  .addTo(map);
+/* -------------------------------------------------------------
+   2. GRID & TOKEN LOGIC
+--------------------------------------------------------------*/
 
-// Add a marker to represent the player
-const playerMarker = leaflet.marker(CLASSROOM_LATLNG);
-playerMarker.bindTooltip("That's you!");
-playerMarker.addTo(map);
+// About the size of a house
+const CELL_SIZE = 0.0001;
 
-// Display the player's points
-let playerPoints = 0;
-statusPanelDiv.innerHTML = "No points yet...";
+// Store rendered cells so we don’t redraw them
+const cellLayers: Map<string, L.Polygon> = new Map();
 
-// Add caches to the map by cell numbers
-function spawnCache(i: number, j: number) {
-  // Convert cell numbers into lat/lng bounds
-  const origin = CLASSROOM_LATLNG;
-  const bounds = leaflet.latLngBounds([
-    [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
-    [origin.lat + (i + 1) * TILE_DEGREES, origin.lng + (j + 1) * TILE_DEGREES],
-  ]);
-
-  // Add a rectangle to the map to represent the cache
-  const rect = leaflet.rectangle(bounds);
-  rect.addTo(map);
-
-  // Handle interactions with the cache
-  rect.bindPopup(() => {
-    // Each cache has a random point value, mutable by the player
-    let pointValue = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
-
-    // The popup offers a description and button
-    const popupDiv = document.createElement("div");
-    popupDiv.innerHTML = `
-                <div>There is a cache here at "${i},${j}". It has value <span id="value">${pointValue}</span>.</div>
-                <button id="poke">poke</button>`;
-
-    // Clicking the button decrements the cache's value and increments the player's points
-    popupDiv
-      .querySelector<HTMLButtonElement>("#poke")!
-      .addEventListener("click", () => {
-        pointValue--;
-        popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML =
-          pointValue.toString();
-        playerPoints++;
-        statusPanelDiv.innerHTML = `${playerPoints} points accumulated`;
-      });
-
-    return popupDiv;
-  });
+// Create a key for map lookup
+function cellKey(i: number, j: number): string {
+  return `${i},${j}`;
 }
 
-// Look around the player's neighborhood for caches to spawn
-for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
-  for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
-    // If location i,j is lucky enough, spawn a cache!
-    if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-      spawnCache(i, j);
+// Deterministic spawning
+function tokenFromLuck(i: number, j: number): number | null {
+  const v = luck(`${i},${j}`); // 0–1
+  if (v < 0.2) return 1; // 20% chance of a "1" token
+  return null;
+}
+
+// Convert lat/lng → grid coordinate
+function latLngToCell(lat: number, lng: number) {
+  return {
+    i: Math.floor(lat / CELL_SIZE),
+    j: Math.floor(lng / CELL_SIZE),
+  };
+}
+
+// Rectangle bounds for Leaflet polygon
+function boundsForCell(i: number, j: number): L.LatLngBoundsLiteral {
+  return [
+    [i * CELL_SIZE, j * CELL_SIZE],
+    [(i + 1) * CELL_SIZE, (j + 1) * CELL_SIZE],
+  ];
+}
+
+/* -------------------------------------------------------------
+   3. RENDERING THE WORLD
+--------------------------------------------------------------*/
+
+function renderGrid() {
+  const b = map.getBounds();
+
+  // Convert visible map bounds into grid coordinates
+  const sw = latLngToCell(b.getSouth(), b.getWest());
+  const ne = latLngToCell(b.getNorth(), b.getEast());
+
+  // Loop over every visible cell (+1 border)
+  for (let i = sw.i - 1; i <= ne.i + 1; i++) {
+    for (let j = sw.j - 1; j <= ne.j + 1; j++) {
+      const key = cellKey(i, j);
+
+      // Skip if already drawn
+      if (!cellLayers.has(key)) {
+        const rect = L.rectangle(boundsForCell(i, j), {
+          color: "#666",
+          weight: 0.4,
+          fillOpacity: 0.08,
+        });
+
+        // Determine token
+        const t = tokenFromLuck(i, j);
+        if (t !== null) {
+          rect.bindTooltip(`${t}`, {
+            permanent: true,
+            direction: "center",
+            className: "cell-label",
+          });
+        }
+
+        rect.addTo(map);
+        cellLayers.set(key, rect);
+      }
     }
   }
 }
+
+// Redraw grid when map moves
+map.on("moveend", renderGrid);
+renderGrid();
