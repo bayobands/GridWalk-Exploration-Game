@@ -1,4 +1,3 @@
-// Fix Leaflet CSS, icons, paths BEFORE Leaflet loads
 import "leaflet/dist/leaflet.css";
 import "./_leafletWorkaround.ts";
 import "./style.css";
