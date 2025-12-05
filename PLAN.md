@@ -108,3 +108,28 @@ Collect digital "bits" around the globe and fuse equal-value tokens together to 
 - [x] Implement `saveState()` function
 - [x] Automatically save to `localStorage` whenever a cell is modified
 - [x] Verify saved data updates correctly as player crafts or picks up tokens
+
+### **D3.d.3 — Load System**
+
+- [x] Implement `loadState()` to run on page startup
+- [x] Rehydrate the `modifiedCells` map from stored JSON
+- [x] Ensure cells appear exactly as they were before reload
+- [x] Handle corrupted or missing save data gracefully
+
+---
+
+### **D3.d.4 — Integration With Rendering**
+
+- [x] Ensure rendering logic uses restored `modifiedCells`
+- [x] Verify pickup/crafting still works after reload
+- [x] Confirm persistence interacts correctly with Flyweight system
+
+---
+
+### **D3.d.5 — Cleanup Commit**
+
+- [ ] Remove debug console logs used during testing
+- [ ] Final review of the persistence system
+- [ ] Commit labeled **“D3.d complete”**
+
+---

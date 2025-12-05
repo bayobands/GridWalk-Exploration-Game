@@ -38,25 +38,35 @@ function cellDistance(a: number, b: number, c: number, d: number) {
   return Math.abs(a - c) + Math.abs(b - d);
 }
 
-// Determines initial cell token
 function tokenFromLuck(i: number, j: number): number | null {
   return luck(`${i},${j}`) < 0.2 ? 1 : null;
 }
-// Convert modifiedCells → JSON string
+
+/* -------------------------------------------------------------
+   SAVE + LOAD SYSTEM (D3.d)
+--------------------------------------------------------------*/
+
+// Persistent modified cell states
+const modifiedCells = new Map<string, number | null>();
+
+// Convert modifiedCells → JSON for saving
 function serializeModifiedCells(): string {
   return JSON.stringify(Array.from(modifiedCells.entries()));
 }
 
-// Convert JSON → modifiedCells map
-function _deserializeModifiedCells(json: string) {
+// Load saved cell data
+function loadGame() {
+  const saved = localStorage.getItem("worldOfBits_save");
+  if (!saved) return;
+
   try {
-    const arr = JSON.parse(json) as [string, number | null][];
+    const arr = JSON.parse(saved) as [string, number | null][];
     modifiedCells.clear();
     for (const [key, value] of arr) {
       modifiedCells.set(key, value);
     }
   } catch (err) {
-    console.warn("Failed to load saved cell data:", err);
+    console.error("Error loading save:", err);
   }
 }
 
@@ -64,6 +74,9 @@ function saveGameState() {
   const data = serializeModifiedCells();
   localStorage.setItem("worldOfBits_save", data);
 }
+
+// Load BEFORE we render
+loadGame();
 
 /* -------------------------------------------------------------
    PLAYER STATE
@@ -100,7 +113,7 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
 }).addTo(map);
 
-const playerMarker = L.marker(playerLatLng(), { title: "You" });
+const playerMarker = L.marker(playerLatLng());
 playerMarker.addTo(map);
 
 /* -------------------------------------------------------------
@@ -127,7 +140,7 @@ function updateInventoryUI() {
 }
 
 /* -------------------------------------------------------------
-   MOVEMENT CONTROLS
+   MOVEMENT BUTTONS
 --------------------------------------------------------------*/
 
 const controls = document.createElement("div");
@@ -153,8 +166,8 @@ document.body.appendChild(controls);
 function movePlayer(di: number, dj: number) {
   player.i += di;
   player.j += dj;
-  const pos = playerLatLng();
 
+  const pos = playerLatLng();
   playerMarker.setLatLng(pos);
   map.panTo(pos);
 
@@ -167,18 +180,15 @@ document.getElementById("moveW")!.onclick = () => movePlayer(0, -1);
 document.getElementById("moveE")!.onclick = () => movePlayer(0, 1);
 
 /* -------------------------------------------------------------
-   CELL STATE (Flyweight + Memento)
+   CELL STATE SYSTEM
 --------------------------------------------------------------*/
 
-// Cells with modified state persist here
-const modifiedCells = new Map<string, number | null>();
-
-// Visible cell rectangles (recreated every frame)
+// Cells currently on-screen (flyweight)
 const ephemeralCells = new Map<string, L.Rectangle>();
 
+// Container for rectangles
 const gridLayer = L.layerGroup().addTo(map);
 
-// Load correct token value for a cell
 function getCellTokenValue(i: number, j: number): number | null {
   const key = cellKey(i, j);
   return modifiedCells.has(key) ? modifiedCells.get(key)! : tokenFromLuck(i, j);
@@ -242,11 +252,14 @@ function renderGrid() {
         // CRAFT
         if (current === heldToken) {
           const newVal = heldToken * 2;
+
           setCellTokenValue(i, j, newVal);
-          saveGameState();
           heldToken = null;
+
           updateInventoryUI();
+          saveGameState();
           renderGrid();
+          return;
         }
       });
 
@@ -257,8 +270,8 @@ function renderGrid() {
 }
 
 map.on("moveend", renderGrid);
-map.on("zoomend", renderGrid);
 map.on("dragend", renderGrid);
+map.on("zoomend", renderGrid);
 
 renderGrid();
 updateInventoryUI();
