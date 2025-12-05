@@ -125,11 +125,17 @@ Collect digital "bits" around the globe and fuse equal-value tokens together to 
 - [x] Confirm persistence interacts correctly with Flyweight system
 
 ---
+### **D3.d.5 — New Game Button**
+- [x] Added New Game Button
 
-### **D3.d.5 — Cleanup Commit**
+--
+### **D3.d.6 — New Game Button**
+- [x] Added Geolocation
 
-- [ ] Remove debug console logs used during testing
-- [ ] Final review of the persistence system
-- [ ] Commit labeled **“D3.d complete”**
+--
+### **D3.d.7 — Cleanup Commit**
 
+- [x] Remove debug console logs used during testing
+- [x] Final review of the persistence system
+- [x] Commit labeled **“D3.d complete”**
 ---

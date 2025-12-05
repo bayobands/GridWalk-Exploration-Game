@@ -6,8 +6,6 @@ import "./style.css";
 // Leaflet runtime + types
 // @deno-types="npm:@types/leaflet"
 import L from "leaflet";
-
-// Deterministic hashing
 import luck from "./_luck.ts";
 
 /* -------------------------------------------------------------
@@ -43,18 +41,15 @@ function tokenFromLuck(i: number, j: number): number | null {
 }
 
 /* -------------------------------------------------------------
-   SAVE + LOAD SYSTEM (D3.d)
+   SAVE + LOAD SYSTEM
 --------------------------------------------------------------*/
 
-// Persistent modified cell states
 const modifiedCells = new Map<string, number | null>();
 
-// Convert modifiedCells → JSON for saving
 function serializeModifiedCells(): string {
   return JSON.stringify(Array.from(modifiedCells.entries()));
 }
 
-// Load saved cell data
 function loadGame() {
   const saved = localStorage.getItem("worldOfBits_save");
   if (!saved) return;
@@ -65,18 +60,14 @@ function loadGame() {
     for (const [key, value] of arr) {
       modifiedCells.set(key, value);
     }
-  } catch (err) {
-    console.error("Error loading save:", err);
+  } catch {
+    // Ignore corrupted saves
   }
 }
 
 function saveGameState() {
-  const data = serializeModifiedCells();
-  localStorage.setItem("worldOfBits_save", data);
+  localStorage.setItem("worldOfBits_save", serializeModifiedCells());
 }
-
-// Load BEFORE we render
-loadGame();
 
 /* -------------------------------------------------------------
    PLAYER STATE
@@ -84,7 +75,6 @@ loadGame();
 
 const CLASS_LAT = 36.99790233940329;
 const CLASS_LNG = -122.05700844526292;
-
 const startCell = latLngToCell(CLASS_LAT, CLASS_LNG);
 
 const player = {
@@ -98,6 +88,8 @@ function playerLatLng(): [number, number] {
     player.j * CELL_SIZE + CELL_SIZE / 2,
   ];
 }
+
+loadGame();
 
 /* -------------------------------------------------------------
    MAP SETUP
@@ -113,12 +105,13 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
 }).addTo(map);
 
-const playerMarker = L.marker(playerLatLng());
-playerMarker.addTo(map);
+const playerMarker = L.marker(playerLatLng(), { title: "You" }).addTo(map);
 
 /* -------------------------------------------------------------
    UI
 --------------------------------------------------------------*/
+
+let heldToken: number | null = null;
 
 const inventoryDiv = document.createElement("div");
 inventoryDiv.style.position = "absolute";
@@ -131,18 +124,28 @@ inventoryDiv.style.fontSize = "18px";
 inventoryDiv.style.zIndex = "999";
 document.body.appendChild(inventoryDiv);
 
-let heldToken: number | null = null;
-
 function updateInventoryUI() {
   inventoryDiv.innerText = heldToken === null
     ? "Token: none"
     : `Token: ${heldToken}`;
 }
 
+// New Game button
+const newGameBtn = document.createElement("button");
+newGameBtn.innerText = "New Game";
+newGameBtn.style.position = "absolute";
+newGameBtn.style.top = "10px";
+newGameBtn.style.right = "10px";
+newGameBtn.style.padding = "6px 10px";
+newGameBtn.style.fontSize = "14px";
+newGameBtn.style.zIndex = "999";
+document.body.appendChild(newGameBtn);
+
 /* -------------------------------------------------------------
-   MOVEMENT BUTTONS
+   MOVEMENT CONTROLS + FACADE
 --------------------------------------------------------------*/
 
+// On-screen movement buttons (used in button mode)
 const controls = document.createElement("div");
 controls.style.position = "absolute";
 controls.style.bottom = "20px";
@@ -166,27 +169,123 @@ document.body.appendChild(controls);
 function movePlayer(di: number, dj: number) {
   player.i += di;
   player.j += dj;
-
   const pos = playerLatLng();
   playerMarker.setLatLng(pos);
   map.panTo(pos);
-
   renderGrid();
 }
 
-document.getElementById("moveN")!.onclick = () => movePlayer(-1, 0);
-document.getElementById("moveS")!.onclick = () => movePlayer(1, 0);
-document.getElementById("moveW")!.onclick = () => movePlayer(0, -1);
-document.getElementById("moveE")!.onclick = () => movePlayer(0, 1);
+// Movement mode toggle button
+const movementToggleBtn = document.createElement("button");
+movementToggleBtn.style.position = "absolute";
+movementToggleBtn.style.top = "44px";
+movementToggleBtn.style.right = "10px";
+movementToggleBtn.style.padding = "6px 10px";
+movementToggleBtn.style.fontSize = "14px";
+movementToggleBtn.style.zIndex = "999";
+document.body.appendChild(movementToggleBtn);
+
+interface MovementController {
+  mode: "buttons" | "geolocation";
+  start(): void;
+  stop(): void;
+}
+
+let geoWatchId: number | null = null;
+
+const buttonMovementController: MovementController = {
+  mode: "buttons",
+  start() {
+    controls.style.display = "grid";
+    document.getElementById("moveN")!.onclick = () => movePlayer(-1, 0);
+    document.getElementById("moveS")!.onclick = () => movePlayer(1, 0);
+    document.getElementById("moveW")!.onclick = () => movePlayer(0, -1);
+    document.getElementById("moveE")!.onclick = () => movePlayer(0, 1);
+  },
+  stop() {
+    controls.style.display = "none";
+    document.getElementById("moveN")!.onclick = null;
+    document.getElementById("moveS")!.onclick = null;
+    document.getElementById("moveW")!.onclick = null;
+    document.getElementById("moveE")!.onclick = null;
+  },
+};
+
+const geolocationMovementController: MovementController = {
+  mode: "geolocation",
+  start() {
+    controls.style.display = "none";
+    if (!navigator.geolocation) return;
+
+    geoWatchId = navigator.geolocation.watchPosition((pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      const cell = latLngToCell(lat, lng);
+      player.i = cell.i;
+      player.j = cell.j;
+
+      const p = playerLatLng();
+      playerMarker.setLatLng(p);
+      map.panTo(p);
+      renderGrid();
+    });
+  },
+  stop() {
+    if (geoWatchId !== null) {
+      navigator.geolocation.clearWatch(geoWatchId);
+      geoWatchId = null;
+    }
+  },
+};
+
+let currentMovement: MovementController = buttonMovementController;
+
+function setMovementMode(next: MovementController) {
+  currentMovement.stop();
+  currentMovement = next;
+  currentMovement.start();
+  movementToggleBtn.innerText = currentMovement.mode === "buttons"
+    ? "Use Geolocation"
+    : "Use Buttons";
+}
+
+// Initial mode: buttons
+setMovementMode(buttonMovementController);
+
+// Toggle click handler
+movementToggleBtn.onclick = () => {
+  if (currentMovement.mode === "buttons") {
+    setMovementMode(geolocationMovementController);
+  } else {
+    setMovementMode(buttonMovementController);
+  }
+};
 
 /* -------------------------------------------------------------
-   CELL STATE SYSTEM
+   NEW GAME LOGIC
 --------------------------------------------------------------*/
 
-// Cells currently on-screen (flyweight)
-const ephemeralCells = new Map<string, L.Rectangle>();
+newGameBtn.onclick = () => {
+  localStorage.removeItem("worldOfBits_save");
+  modifiedCells.clear();
+  heldToken = null;
 
-// Container for rectangles
+  player.i = startCell.i;
+  player.j = startCell.j;
+
+  updateInventoryUI();
+  const pos = playerLatLng();
+  map.setView(pos, 18);
+  playerMarker.setLatLng(pos);
+  renderGrid();
+};
+
+/* -------------------------------------------------------------
+   CELL STATE + GRID
+--------------------------------------------------------------*/
+
+const ephemeralCells = new Map<string, L.Rectangle>();
 const gridLayer = L.layerGroup().addTo(map);
 
 function getCellTokenValue(i: number, j: number): number | null {
@@ -202,10 +301,6 @@ function isInteractableCell(i: number, j: number) {
   return cellDistance(i, j, player.i, player.j) <= 3;
 }
 
-/* -------------------------------------------------------------
-   GRID RENDERING
---------------------------------------------------------------*/
-
 function renderGrid() {
   gridLayer.clearLayers();
   ephemeralCells.clear();
@@ -215,18 +310,18 @@ function renderGrid() {
   const ne = latLngToCell(bounds.getNorth(), bounds.getEast());
 
   for (let i = sw.i - 1; i <= ne.i + 1; i++) {
-    for (let j = sw.j - 1; j <= ne.j + 1; j++) {
+    for (let j = ne.j + 1; j >= sw.j - 1; j--) {
       const key = cellKey(i, j);
-      const tokenValue = getCellTokenValue(i, j);
+      const value = getCellTokenValue(i, j);
 
       const rect = L.rectangle(boundsForCell(i, j), {
-        color: tokenValue !== null ? "#2b8a3e" : "#666",
+        color: value !== null ? "#2b8a3e" : "#666",
         weight: 0.4,
-        fillOpacity: tokenValue !== null ? 0.25 : 0.08,
+        fillOpacity: value !== null ? 0.25 : 0.08,
       });
 
-      if (tokenValue !== null) {
-        rect.bindTooltip(`${tokenValue}`, {
+      if (value !== null) {
+        rect.bindTooltip(`${value}`, {
           permanent: true,
           direction: "center",
         });
@@ -234,13 +329,11 @@ function renderGrid() {
 
       rect.on("click", () => {
         if (!isInteractableCell(i, j)) return;
-
         const current = getCellTokenValue(i, j);
 
-        // PICKUP
+        // Pick up
         if (heldToken === null) {
           if (current == null) return;
-
           heldToken = current;
           setCellTokenValue(i, j, null);
           updateInventoryUI();
@@ -249,17 +342,14 @@ function renderGrid() {
           return;
         }
 
-        // CRAFT
+        // Craft
         if (current === heldToken) {
           const newVal = heldToken * 2;
-
           setCellTokenValue(i, j, newVal);
           heldToken = null;
-
           updateInventoryUI();
           saveGameState();
           renderGrid();
-          return;
         }
       });
 
