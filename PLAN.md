@@ -13,12 +13,7 @@ Collect digital "bits" around the globe and fuse equal-value tokens together to 
 
 ## Assignments
 
-### D3.a: Core mechanics (token collection and crafting)
-
-Key technical challenge: map-based UI using Leaflet.
-Key gameplay challenge: collect nearby tokens and craft a high-value token.
-
-#### Steps
+### **D3.a -- Core mechanics (token collection and crafting)**
 
 - [x] Read and understand starter code (Leaflet + luck hashing).
 - [x] Copy `src/main.ts` to `src/reference-main.ts` for reference.
@@ -66,29 +61,6 @@ Key gameplay challenge: collect nearby tokens and craft a high-value token.
 
 ### **D3.c.1 — Flyweight Cell Storage**
 
-- [ ] Introduce `modifiedCells` map for persistent modified cell memory
-- [ ] Introduce `ephemeralCells` map for visible-on-screen cell objects
-- [ ] Remove permanent storage of unmodified cell data
-- [ ] Ensure only modified cells remain in memory after scrolling
-
-### **D3.c.2 — Memento Restore System**
-
-- [ ] Save modified cell state into `modifiedCells` whenever player alters a cell
-- [ ] Restore cell state from `modifiedCells` when the cell re-enters view
-- [ ] If no modified state exists, generate token using deterministic `luck()`
-- [ ] Verify restored cells behave exactly the same before/after leaving visibility
-
-### **D3.c.3 — RenderGrid Rewrite**
-
-- [ ] Clear `ephemeralCells` every time `renderGrid` runs
-- [ ] Rebuild all visible cells fresh from:
-  - `modifiedCells` (persistent state)
-  - **OR** `luck()` (unmodified state)
-- [ ] Ensure grid spans entire map while keeping memory small
-- [ ] Keep interaction logic consistent with new flyweight model
-
-### **D3.c.1 — Flyweight Cell Storage**
-
 - [x] Introduce `modifiedCells` map for persistent modified cell memory
 - [x] Introduce `ephemeralCells` map for visible-on-screen cell objects
 - [x] Remove permanent storage of unmodified cell data
@@ -122,3 +94,17 @@ Key gameplay challenge: collect nearby tokens and craft a high-value token.
 - [x] Remove debugging logs
 - [x] Refactor duplicated logic
 - [x] Final D3.c review
+
+### **D3.d.1 — Serialization Format**
+
+- [ ] Choose a format for saving data (JSON recommended)
+- [ ] Convert `modifiedCells` map into a serializable structure
+- [ ] Ensure deserialization restores correct number and types of values
+
+---
+
+### **D3.d.2 — Save System**
+
+- [ ] Implement `saveState()` function
+- [ ] Automatically save to `localStorage` whenever a cell is modified
+- [ ] Verify saved data updates correctly as player crafts or picks up tokens
