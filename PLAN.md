@@ -119,14 +119,6 @@ Key gameplay challenge: collect nearby tokens and craft a high-value token.
 
 ### **D3.c.5 — Cleanup Commit**
 
-- [ ] Remove debugging logs
-- [ ] Refactor duplicated logic
-- [ ] Final D3.c review
-- Commit message: **"D3.c complete"**
-
-### **D3.c.5 — Cleanup Commit**
-
-- [ ] Remove debugging logs
-- [ ] Refactor duplicated logic
-- [ ] Final D3.c review
-- Commit message: **"D3.c complete"**
+- [x] Remove debugging logs
+- [x] Refactor duplicated logic
+- [x] Final D3.c review

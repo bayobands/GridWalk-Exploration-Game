@@ -16,7 +16,6 @@ import luck from "./_luck.ts";
 
 const CELL_SIZE = 0.0001;
 
-// Create a unique string for each cell
 function cellKey(i: number, j: number): string {
   return `${i},${j}`;
 }
@@ -35,11 +34,11 @@ function boundsForCell(i: number, j: number): L.LatLngBoundsLiteral {
   ];
 }
 
-function cellDistance(i1: number, j1: number, i2: number, j2: number) {
-  return Math.abs(i1 - i2) + Math.abs(j1 - j2);
+function cellDistance(a: number, b: number, c: number, d: number) {
+  return Math.abs(a - c) + Math.abs(b - d);
 }
 
-// Initial deterministic token
+// Determines initial cell token
 function tokenFromLuck(i: number, j: number): number | null {
   return luck(`${i},${j}`) < 0.2 ? 1 : null;
 }
@@ -75,17 +74,15 @@ document.body.appendChild(mapDiv);
 
 const map = L.map("map", { zoomControl: true }).setView(playerLatLng(), 18);
 
-// Player marker
-const playerMarker = L.marker(playerLatLng(), { title: "You" });
-playerMarker.addTo(map);
-
-// Base map tiles
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
 }).addTo(map);
 
+const playerMarker = L.marker(playerLatLng(), { title: "You" });
+playerMarker.addTo(map);
+
 /* -------------------------------------------------------------
-   INVENTORY UI + WIN MESSAGE
+   UI
 --------------------------------------------------------------*/
 
 const inventoryDiv = document.createElement("div");
@@ -108,7 +105,7 @@ function updateInventoryUI() {
 }
 
 /* -------------------------------------------------------------
-   MOVEMENT UI
+   MOVEMENT CONTROLS
 --------------------------------------------------------------*/
 
 const controls = document.createElement("div");
@@ -134,8 +131,8 @@ document.body.appendChild(controls);
 function movePlayer(di: number, dj: number) {
   player.i += di;
   player.j += dj;
-
   const pos = playerLatLng();
+
   playerMarker.setLatLng(pos);
   map.panTo(pos);
 
@@ -148,41 +145,25 @@ document.getElementById("moveW")!.onclick = () => movePlayer(0, -1);
 document.getElementById("moveE")!.onclick = () => movePlayer(0, 1);
 
 /* -------------------------------------------------------------
-   D3.c — FLYWEIGHT + MEMENTO + RESTORE
+   CELL STATE (Flyweight + Memento)
 --------------------------------------------------------------*/
 
-// Only modified cells persist when they go off-screen
+// Cells with modified state persist here
 const modifiedCells = new Map<string, number | null>();
 
-// Only visible cells for rendering (Flyweight)
+// Visible cell rectangles (recreated every frame)
 const ephemeralCells = new Map<string, L.Rectangle>();
 
-// For testing in browser console
-// @ts-ignore FOr when I upload the final thing don't watn debug
-globalThis.modifiedCells = modifiedCells;
-// @ts-ignore FOr when I upload the final thing don't watn debug
-globalThis.ephemeralCells = ephemeralCells;
-
-// Layer for cell rectangles
 const gridLayer = L.layerGroup().addTo(map);
 
-// Get correct value for cell
+// Load correct token value for a cell
 function getCellTokenValue(i: number, j: number): number | null {
   const key = cellKey(i, j);
-
-  // 1. Modified? → Use saved state
-  if (modifiedCells.has(key)) {
-    return modifiedCells.get(key)!;
-  }
-
-  // 2. Never modified? → Deterministic luck
-  return tokenFromLuck(i, j);
+  return modifiedCells.has(key) ? modifiedCells.get(key)! : tokenFromLuck(i, j);
 }
 
-// Write modified value (Memento)
 function setCellTokenValue(i: number, j: number, value: number | null) {
-  const key = cellKey(i, j);
-  modifiedCells.set(key, value);
+  modifiedCells.set(cellKey(i, j), value);
 }
 
 function isInteractableCell(i: number, j: number) {
@@ -190,7 +171,7 @@ function isInteractableCell(i: number, j: number) {
 }
 
 /* -------------------------------------------------------------
-   RENDER GRID (FULL C3 + C4 IMPLEMENTATION)
+   GRID RENDERING
 --------------------------------------------------------------*/
 
 function renderGrid() {
@@ -202,9 +183,8 @@ function renderGrid() {
   const ne = latLngToCell(bounds.getNorth(), bounds.getEast());
 
   for (let i = sw.i - 1; i <= ne.i + 1; i++) {
-    for (let j = ne.j + 1; j >= sw.j - 1; j--) {
+    for (let j = sw.j - 1; j <= ne.j + 1; j++) {
       const key = cellKey(i, j);
-
       const tokenValue = getCellTokenValue(i, j);
 
       const rect = L.rectangle(boundsForCell(i, j), {
@@ -243,7 +223,6 @@ function renderGrid() {
           heldToken = null;
           updateInventoryUI();
           renderGrid();
-          return;
         }
       });
 
