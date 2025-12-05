@@ -1,21 +1,17 @@
-// Fix Leaflet CSS, icons, paths BEFORE Leaflet loads
+// Leaflet Map Game: "World of Bits" Imports
 import "leaflet/dist/leaflet.css";
 import "./_leafletWorkaround.ts";
 import "./style.css";
 
-// Leaflet runtime + types
-// @deno-types="npm:@types/leaflet"
 import L from "leaflet";
-
-// Deterministic hashing
 import luck from "./_luck.ts";
 
 /* -------------------------------------------------------------
    CONSTANTS + HELPERS
 --------------------------------------------------------------*/
 
-const CELL_SIZE = 0.0001; // approx house-size cell
-const PICKUP_STEPS = 3;
+const CELL_SIZE = 0.0001;
+const INTERACT_RANGE = 3;
 
 function cellKey(i: number, j: number): string {
   return `${i},${j}`;
@@ -35,8 +31,8 @@ function boundsForCell(i: number, j: number): L.LatLngBoundsLiteral {
   ];
 }
 
-function cellDistance(a: number, b: number, c: number, d: number) {
-  return Math.abs(a - c) + Math.abs(b - d);
+function cellDistance(i1: number, j1: number, i2: number, j2: number) {
+  return Math.abs(i1 - i2) + Math.abs(j1 - j2);
 }
 
 function tokenFromLuck(i: number, j: number): number | null {
@@ -44,7 +40,7 @@ function tokenFromLuck(i: number, j: number): number | null {
 }
 
 /* -------------------------------------------------------------
-   SAVE + LOAD SYSTEM
+   SAVE / LOAD (Persistence)
 --------------------------------------------------------------*/
 
 const modifiedCells = new Map<string, number | null>();
@@ -60,16 +56,17 @@ function loadGame() {
   try {
     const arr = JSON.parse(saved) as [string, number | null][];
     modifiedCells.clear();
-    for (const [key, value] of arr) {
-      modifiedCells.set(key, value);
+    for (const [key, val] of arr) {
+      modifiedCells.set(key, val);
     }
   } catch {
-    console.error("Error loading save");
+    /* ignore bad save files */
   }
 }
 
 function saveGameState() {
-  localStorage.setItem("worldOfBits_save", serializeModifiedCells());
+  const data = serializeModifiedCells();
+  localStorage.setItem("worldOfBits_save", data);
 }
 
 loadGame();
@@ -80,11 +77,12 @@ loadGame();
 
 const CLASS_LAT = 36.99790233940329;
 const CLASS_LNG = -122.05700844526292;
-const startCell = latLngToCell(CLASS_LAT, CLASS_LNG);
+
+const start = latLngToCell(CLASS_LAT, CLASS_LNG);
 
 const player = {
-  i: startCell.i,
-  j: startCell.j,
+  i: start.i,
+  j: start.j,
 };
 
 function playerLatLng(): [number, number] {
@@ -102,29 +100,24 @@ const mapDiv = document.createElement("div");
 mapDiv.id = "map";
 document.body.appendChild(mapDiv);
 
-const map = L.map("map").setView(playerLatLng(), 18);
+const map = L.map("map", { zoomControl: true }).setView(playerLatLng(), 18);
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+}).addTo(map);
 
 const playerMarker = L.marker(playerLatLng()).addTo(map);
 
-/* -----------------------------
-   PICKUP RANGE CIRCLE (NEW)
-------------------------------*/
-
-const PICKUP_RADIUS_METERS = CELL_SIZE * PICKUP_STEPS * 111320;
-
+/* Range Indicator Circle */
 const rangeCircle = L.circle(playerLatLng(), {
-  radius: PICKUP_RADIUS_METERS,
-  color: "#00aaff",
-  fillColor: "#00aaff",
-  fillOpacity: 0.12,
+  radius: CELL_SIZE * INTERACT_RANGE * 111000 * 0.8, // convert degrees to meters approximated
+  color: "#4287f5",
   weight: 1,
-});
-rangeCircle.addTo(map);
+  fillOpacity: 0.05,
+}).addTo(map);
 
 /* -------------------------------------------------------------
-   INVENTORY UI
+   UI
 --------------------------------------------------------------*/
 
 const inventoryDiv = document.createElement("div");
@@ -160,14 +153,37 @@ document.body.appendChild(newGameBtn);
 
 newGameBtn.onclick = () => {
   modifiedCells.clear();
+  localStorage.removeItem("worldOfBits_save");
   heldToken = null;
-  saveGameState();
   updateInventoryUI();
   renderGrid();
 };
 
 /* -------------------------------------------------------------
-   MOVEMENT BUTTONS (BUTTON MODE)
+   GEOLOCATION MODE SELECTOR
+--------------------------------------------------------------*/
+
+const url = new URL(globalThis.location.href);
+const movementMode = url.searchParams.get("movement") || "buttons";
+const useGeo = movementMode === "geo";
+
+/* Toggle Button */
+const modeBtn = document.createElement("button");
+modeBtn.innerText = useGeo ? "Switch to Buttons" : "Use Geolocation";
+modeBtn.style.position = "absolute";
+modeBtn.style.top = "50px";
+modeBtn.style.right = "10px";
+modeBtn.style.zIndex = "999";
+document.body.appendChild(modeBtn);
+
+modeBtn.onclick = () => {
+  const next = useGeo ? "buttons" : "geo";
+  url.searchParams.set("movement", next);
+  globalThis.location.href = url.toString();
+};
+
+/* -------------------------------------------------------------
+   BUTTON MOVEMENT
 --------------------------------------------------------------*/
 
 const controls = document.createElement("div");
@@ -175,7 +191,7 @@ controls.style.position = "absolute";
 controls.style.bottom = "20px";
 controls.style.left = "50%";
 controls.style.transform = "translateX(-50%)";
-controls.style.display = "grid";
+controls.style.display = useGeo ? "none" : "grid";
 controls.style.gridTemplateColumns = "repeat(3, 60px)";
 controls.style.gap = "6px";
 controls.style.zIndex = "999";
@@ -190,51 +206,48 @@ controls.innerHTML = `
 
 document.body.appendChild(controls);
 
-function movePlayer(di: number, dj: number) {
+function manualMove(di: number, dj: number) {
   player.i += di;
   player.j += dj;
 
   const pos = playerLatLng();
-
   playerMarker.setLatLng(pos);
-  map.panTo(pos);
   rangeCircle.setLatLng(pos);
+  map.panTo(pos);
 
   renderGrid();
 }
 
-document.getElementById("moveN")!.onclick = () => movePlayer(-1, 0);
-document.getElementById("moveS")!.onclick = () => movePlayer(1, 0);
-document.getElementById("moveW")!.onclick = () => movePlayer(0, -1);
-document.getElementById("moveE")!.onclick = () => movePlayer(0, 1);
+if (!useGeo) {
+  document.getElementById("moveN")!.onclick = () => manualMove(-1, 0);
+  document.getElementById("moveS")!.onclick = () => manualMove(1, 0);
+  document.getElementById("moveW")!.onclick = () => manualMove(0, -1);
+  document.getElementById("moveE")!.onclick = () => manualMove(0, 1);
+}
 
 /* -------------------------------------------------------------
-   GEOLOCATION MODE (OPTIONAL)
+   GEOLOCATION MODE
 --------------------------------------------------------------*/
-
-// URL example: index.html?movement=geo
-const useGeo = new URLSearchParams(location.search).get("movement") === "geo";
 
 if (useGeo && navigator.geolocation) {
   navigator.geolocation.watchPosition((pos) => {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
+    const { latitude, longitude } = pos.coords;
+    const cell = latLngToCell(latitude, longitude);
 
-    const cell = latLngToCell(lat, lng);
     player.i = cell.i;
     player.j = cell.j;
 
-    const p = playerLatLng();
-    playerMarker.setLatLng(p);
-    map.panTo(p);
-    rangeCircle.setLatLng(p);
+    const pt = playerLatLng();
+    playerMarker.setLatLng(pt);
+    rangeCircle.setLatLng(pt);
+    map.panTo(pt);
 
     renderGrid();
   });
 }
 
 /* -------------------------------------------------------------
-   CELL STATE + GRID RENDERING
+   CELL SYSTEM
 --------------------------------------------------------------*/
 
 const ephemeralCells = new Map<string, L.Rectangle>();
@@ -249,8 +262,12 @@ function setCellTokenValue(i: number, j: number, value: number | null) {
   modifiedCells.set(cellKey(i, j), value);
 }
 
+/* -------------------------------------------------------------
+   GRID RENDERING
+--------------------------------------------------------------*/
+
 function isInteractableCell(i: number, j: number) {
-  return cellDistance(i, j, player.i, player.j) <= PICKUP_STEPS;
+  return cellDistance(i, j, player.i, player.j) <= INTERACT_RANGE;
 }
 
 function renderGrid() {
@@ -263,7 +280,6 @@ function renderGrid() {
 
   for (let i = sw.i - 1; i <= ne.i + 1; i++) {
     for (let j = sw.j - 1; j <= ne.j + 1; j++) {
-      const key = cellKey(i, j);
       const tokenValue = getCellTokenValue(i, j);
 
       const rect = L.rectangle(boundsForCell(i, j), {
@@ -284,29 +300,41 @@ function renderGrid() {
 
         const current = getCellTokenValue(i, j);
 
+        // PICKUP
         if (heldToken === null) {
           if (current == null) return;
+
           heldToken = current;
           setCellTokenValue(i, j, null);
-        } else if (current === heldToken) {
-          setCellTokenValue(i, j, heldToken * 2);
-          heldToken = null;
+          updateInventoryUI();
+          saveGameState();
+          renderGrid();
+          return;
         }
 
-        saveGameState();
-        updateInventoryUI();
-        renderGrid();
+        // CRAFT
+        if (current === heldToken) {
+          const newVal = heldToken * 2;
+
+          setCellTokenValue(i, j, newVal);
+          heldToken = null;
+
+          updateInventoryUI();
+          saveGameState();
+          renderGrid();
+          return;
+        }
       });
 
       rect.addTo(gridLayer);
-      ephemeralCells.set(key, rect);
+      ephemeralCells.set(cellKey(i, j), rect);
     }
   }
 }
 
 map.on("moveend", renderGrid);
-map.on("dragend", renderGrid);
 map.on("zoomend", renderGrid);
+map.on("dragend", renderGrid);
 
 renderGrid();
 updateInventoryUI();
