@@ -42,6 +42,28 @@ function cellDistance(a: number, b: number, c: number, d: number) {
 function tokenFromLuck(i: number, j: number): number | null {
   return luck(`${i},${j}`) < 0.2 ? 1 : null;
 }
+// Convert modifiedCells → JSON string
+function serializeModifiedCells(): string {
+  return JSON.stringify(Array.from(modifiedCells.entries()));
+}
+
+// Convert JSON → modifiedCells map
+function _deserializeModifiedCells(json: string) {
+  try {
+    const arr = JSON.parse(json) as [string, number | null][];
+    modifiedCells.clear();
+    for (const [key, value] of arr) {
+      modifiedCells.set(key, value);
+    }
+  } catch (err) {
+    console.warn("Failed to load saved cell data:", err);
+  }
+}
+
+function saveGameState() {
+  const data = serializeModifiedCells();
+  localStorage.setItem("worldOfBits_save", data);
+}
 
 /* -------------------------------------------------------------
    PLAYER STATE
@@ -212,6 +234,7 @@ function renderGrid() {
           heldToken = current;
           setCellTokenValue(i, j, null);
           updateInventoryUI();
+          saveGameState();
           renderGrid();
           return;
         }
@@ -220,6 +243,7 @@ function renderGrid() {
         if (current === heldToken) {
           const newVal = heldToken * 2;
           setCellTokenValue(i, j, newVal);
+          saveGameState();
           heldToken = null;
           updateInventoryUI();
           renderGrid();

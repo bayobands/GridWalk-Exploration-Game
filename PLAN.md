@@ -97,14 +97,14 @@ Collect digital "bits" around the globe and fuse equal-value tokens together to 
 
 ### **D3.d.1 — Serialization Format**
 
-- [ ] Choose a format for saving data (JSON recommended)
-- [ ] Convert `modifiedCells` map into a serializable structure
-- [ ] Ensure deserialization restores correct number and types of values
+- [x] Choose a format for saving data (JSON recommended)
+- [x] Convert `modifiedCells` map into a serializable structure
+- [x] Ensure deserialization restores correct number and types of values
 
 ---
 
 ### **D3.d.2 — Save System**
 
-- [ ] Implement `saveState()` function
-- [ ] Automatically save to `localStorage` whenever a cell is modified
-- [ ] Verify saved data updates correctly as player crafts or picks up tokens
+- [x] Implement `saveState()` function
+- [x] Automatically save to `localStorage` whenever a cell is modified
+- [x] Verify saved data updates correctly as player crafts or picks up tokens
