@@ -64,10 +64,69 @@ Key gameplay challenge: collect nearby tokens and craft a high-value token.
 - [x] Remove debug logs
 - [x] Final review of D3.b
 
-### **D3.c Steps
+### **D3.c.1 — Flyweight Cell Storage**
 
-- [] Introduce modifiedCells (persistent memory)
-- [] Introduce ephemeralCells (on-screen-only memory)
-- [] Update renderGrid to use flyweight model
-- [] Save/restore modified states (Memento)
-- [] Remove permanent storage of unmodified cell
+- [ ] Introduce `modifiedCells` map for persistent modified cell memory
+- [ ] Introduce `ephemeralCells` map for visible-on-screen cell objects
+- [ ] Remove permanent storage of unmodified cell data
+- [ ] Ensure only modified cells remain in memory after scrolling
+
+### **D3.c.2 — Memento Restore System**
+
+- [ ] Save modified cell state into `modifiedCells` whenever player alters a cell
+- [ ] Restore cell state from `modifiedCells` when the cell re-enters view
+- [ ] If no modified state exists, generate token using deterministic `luck()`
+- [ ] Verify restored cells behave exactly the same before/after leaving visibility
+
+### **D3.c.3 — RenderGrid Rewrite**
+
+- [ ] Clear `ephemeralCells` every time `renderGrid` runs
+- [ ] Rebuild all visible cells fresh from:
+  - `modifiedCells` (persistent state)
+  - **OR** `luck()` (unmodified state)
+- [ ] Ensure grid spans entire map while keeping memory small
+- [ ] Keep interaction logic consistent with new flyweight model
+
+### **D3.c.1 — Flyweight Cell Storage**
+
+- [x] Introduce `modifiedCells` map for persistent modified cell memory
+- [x] Introduce `ephemeralCells` map for visible-on-screen cell objects
+- [x] Remove permanent storage of unmodified cell data
+- [x] Ensure only modified cells remain in memory after scrolling
+
+### **D3.c.2 — Memento Restore System**
+
+- [x] Save modified cell state into `modifiedCells` whenever player alters a cell
+- [ ] Restore cell state from `modifiedCells` when the cell re-enters view
+- [ ] If no modified state exists, generate token using deterministic `luck()`
+- [ ] Verify restored cells behave exactly the same before/after leaving visibility
+
+### **D3.c.3 — RenderGrid Rewrite**
+
+- [ ] Clear `ephemeralCells` every time `renderGrid` runs
+- [ ] Rebuild all visible cells fresh from:
+  - `modifiedCells` (persistent state)
+  - **OR** `luck()` (unmodified state)
+- [ ] Ensure grid spans entire map while keeping memory small
+- [ ] Keep interaction logic consistent with new flyweight model
+
+### **D3.c.4 — Gameplay Behavior Verification**
+
+- [ ] Player can “farm” tokens by moving away and back
+- [ ] Modified cells do **not** reset when hidden (persistence)
+- [ ] Unmodified cells **do** reset (flyweight stateless behavior)
+- [ ] All crafting and pickup rules still function correctly
+
+### **D3.c.5 — Cleanup Commit**
+
+- [ ] Remove debugging logs
+- [ ] Refactor duplicated logic
+- [ ] Final D3.c review
+- Commit message: **"D3.c complete"**
+
+### **D3.c.5 — Cleanup Commit**
+
+- [ ] Remove debugging logs
+- [ ] Refactor duplicated logic
+- [ ] Final D3.c review
+- Commit message: **"D3.c complete"**
