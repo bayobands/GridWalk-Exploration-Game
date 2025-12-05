@@ -51,18 +51,15 @@ Key gameplay challenge: collect nearby tokens and craft a high-value token.
 
 ### **D3.b.3 — Interaction Uses _Real_ Player Location**
 
-- [ ] Restrict pickup/crafting based on **player grid**, not classroom
-- [ ] All interactions update correctly as player moves
-- Commit required
+- [x] Restrict pickup/crafting based on **player grid**, not classroom
+- [x] All interactions update correctly as player moves
 
 ### **D3.b.4 — Auto-scroll Camera**
 
-- [ ] Map recenters whenever player moves
-- [ ] Smooth camera movement
-- Commit required
+- [x] Map recenters whenever player moves
+- [x] Smooth camera movement
 
 ### **D3.b.5 — Cleanup Commit**
 
-- [ ] Remove debug logs
-- [ ] Final review of D3.b
-- Commit labeled “D3.b complete”
+- [x] Remove debug logs
+- [x] Final review of D3.b

@@ -40,7 +40,7 @@ function cellDistance(i1: number, j1: number, i2: number, j2: number) {
 
 function tokenFromLuck(i: number, j: number): number | null {
   const v = luck(`${i},${j}`);
-  return v < 0.2 ? 1 : null;
+  return v < 0.2 ? 1 : null; // 20% chance a cell contains a token
 }
 
 /* -------------------------------------------------------------
@@ -59,7 +59,6 @@ const player = {
   j: startCell.j,
 };
 
-// Convert player grid → lat/lng
 function playerLatLng(): [number, number] {
   return [
     player.i * CELL_SIZE + CELL_SIZE / 2,
@@ -125,8 +124,8 @@ const WIN_VALUE = 16;
 
 function updateInventoryUI() {
   inventoryDiv.innerText = heldToken === null
-    ? "Held Token: none"
-    : `Held Token: ${heldToken}`;
+    ? "Token: none"
+    : `Token: ${heldToken}`;
 
   if (heldToken !== null && heldToken >= WIN_VALUE) {
     winDiv.style.display = "block";
@@ -167,17 +166,16 @@ function movePlayer(di: number, dj: number) {
   playerMarker.setLatLng(pos);
   map.panTo(pos);
 
-  renderGrid();
+  renderGrid(); // refresh visible cells
 }
 
-// Hook up movement buttons
 document.getElementById("moveN")!.onclick = () => movePlayer(-1, 0);
 document.getElementById("moveS")!.onclick = () => movePlayer(1, 0);
 document.getElementById("moveW")!.onclick = () => movePlayer(0, -1);
 document.getElementById("moveE")!.onclick = () => movePlayer(0, 1);
 
 /* -------------------------------------------------------------
-   GRID + INTERACTION
+   GRID + TOKEN INTERACTION
 --------------------------------------------------------------*/
 
 const cellLayers: Map<string, L.Rectangle> = new Map();
@@ -193,11 +191,13 @@ function renderGrid() {
   const ne = latLngToCell(bounds.getNorth(), bounds.getEast());
 
   for (let i = sw.i - 1; i <= ne.i + 1; i++) {
-    for (let j = sw.j - 1; j <= ne.j + 1; j++) {
+    for (let j = sw.j - 1; j <= ne.j + 1; j++) { // ✅ FIXED LINE
       const key = cellKey(i, j);
 
+      // Spawn rectangle only once
       if (cellLayers.has(key)) continue;
 
+      // Deterministic token value
       if (!cellTokenMap.has(key)) {
         cellTokenMap.set(key, tokenFromLuck(i, j));
       }
@@ -221,15 +221,16 @@ function renderGrid() {
       rect.on("click", () => {
         if (!isInteractableCell(i, j)) return;
 
-        const cellValue = cellTokenMap.get(key);
+        const cellVal = cellTokenMap.get(key);
 
         // PICKUP
         if (heldToken === null) {
-          if (cellValue == null) return;
+          if (cellVal == null) return;
 
-          heldToken = cellValue;
+          heldToken = cellVal;
           updateInventoryUI();
 
+          // Remove from cell
           cellTokenMap.set(key, null);
           rect.unbindTooltip();
           rect.setStyle({ color: "#666", fillOpacity: 0.08 });
@@ -237,7 +238,7 @@ function renderGrid() {
         }
 
         // CRAFTING
-        if (cellValue === heldToken) {
+        if (cellVal === heldToken) {
           const newValue = heldToken * 2;
           cellTokenMap.set(key, newValue);
 
