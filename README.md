@@ -61,4 +61,3 @@ Use the New Game button to wipe your save and restart.
 Your deployed GitHub Pages link goes here:
 
 https://bayobands.github.io/D3/
-
