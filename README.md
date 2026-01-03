@@ -22,14 +22,8 @@ A location-based crafting game where real-world movement drives gameplay. Player
 
 [GridWalk](https://bayobands.github.io/GridWalk-Exploration-Game/)
 
-## Setup
-
-1. Clone or download this repository
-2. Open the project folder
-3. Serve the files locally or open the game in a supported browser
-4. Allow location access to enable geolocation-based movement
-
 ### Notes
 
 - Button-based movement is available if geolocation is unavailable
 - Starting a new game is recommended when changing locations significantly
+- Need to allow location services
