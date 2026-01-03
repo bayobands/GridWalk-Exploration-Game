@@ -1,63 +1,34 @@
-World of Bits
+# Gridwalk
 
-A real-world, map-based crafting game where you move around the Earth, collect digital “bits,” and combine them to make higher-value tokens. Move in real life → your character moves in the game.
+A location-based crafting game where real-world movement drives gameplay. Players explore a grid-based world, collect digital tokens, and merge them to craft higher-value items using geolocation or on-screen controls.
 
-How the Game Works
+## How It Works
 
-1. The World
+- The world is divided into a grid mapped to real-world coordinates  
+- Players move by walking in real life (geolocation) or using directional buttons  
+- Tokens can be collected and merged to create higher-value items  
+- Progress is saved automatically and persists between sessions  
 
-The world is split into a giant grid.
+## Built With
+- TypeScript
+- JavaScript
+- Leaflet.js
+- HTML5 / CSS3
+- Browser Geolocation API
+- LocalStorage
 
-Each cell might contain a token (value 1).
+## Play the Game
 
-You can see tokens anywhere on the map by scrolling.
-
-2. Movement
-
-You can control your player in two ways:
-
-Geolocation mode: move in real life and your character moves.
-
-Buttons mode: tap N / S / E / W to move one cell at a time.
-
-You can switch modes anytime with the on-screen button.
-
-3. Collecting
-
-If you stand within 3 cells of a token, you can click it.
-
-If your hand is empty, you pick it up.
-
-4. Crafting
-
-If you place a token onto another token with the same value, they combine:
-
-value + value → doubled value
-
-Example:
-1 + 1 → 2
-2 + 2 → 4
-4 + 4 → 8 ... etc
-
-5. Goal
-
-Craft a high-value token 16
-When you reach it, you win.
-
-Saving Your Progress
-
-The game automatically saves everything to your browser.
-
-Closing the page does not reset your progress.
-
-When you reopen the game, your world loads exactly as you left it.
-
-Start Fresh
-
-Use the New Game button to wipe your save and restart.
-
-🔗 Playing the Game
-
-Your deployed GitHub Pages link goes here:
-
+Play the game here:  
 https://bayobands.github.io/D3/
+
+## Setup
+
+1. Clone or download this repository  
+2. Open the project folder  
+3. Serve the files locally or open the game in a supported browser  
+4. Allow location access to enable geolocation-based movement  
+
+### Notes
+- Button-based movement is available if geolocation is unavailable  
+- Starting a new game is recommended when changing locations significantly  
