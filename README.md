@@ -20,8 +20,7 @@ A location-based crafting game where real-world movement drives gameplay. Player
 
 ## Play the Game
 
-Play the game here:\
-https://bayobands.github.io/D3/
+[GridWalk](https://bayobands.github.io/GridWalk-Exploration-Game/)
 
 ## Setup
 
