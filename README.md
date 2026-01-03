@@ -4,12 +4,13 @@ A location-based crafting game where real-world movement drives gameplay. Player
 
 ## How It Works
 
-- The world is divided into a grid mapped to real-world coordinates  
-- Players move by walking in real life (geolocation) or using directional buttons  
-- Tokens can be collected and merged to create higher-value items  
-- Progress is saved automatically and persists between sessions  
+- The world is divided into a grid mapped to real-world coordinates
+- Players move by walking in real life (geolocation) or using directional buttons
+- Tokens can be collected and merged to create higher-value items
+- Progress is saved automatically and persists between sessions
 
 ## Built With
+
 - TypeScript
 - JavaScript
 - Leaflet.js
@@ -19,16 +20,17 @@ A location-based crafting game where real-world movement drives gameplay. Player
 
 ## Play the Game
 
-Play the game here:  
+Play the game here:\
 https://bayobands.github.io/D3/
 
 ## Setup
 
-1. Clone or download this repository  
-2. Open the project folder  
-3. Serve the files locally or open the game in a supported browser  
-4. Allow location access to enable geolocation-based movement  
+1. Clone or download this repository
+2. Open the project folder
+3. Serve the files locally or open the game in a supported browser
+4. Allow location access to enable geolocation-based movement
 
 ### Notes
-- Button-based movement is available if geolocation is unavailable  
-- Starting a new game is recommended when changing locations significantly  
+
+- Button-based movement is available if geolocation is unavailable
+- Starting a new game is recommended when changing locations significantly
